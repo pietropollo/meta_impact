@@ -1,0 +1,664 @@
+---
+title: "Systematic map of meta-analyses related to sexual selection"
+author: "Pietro Pollo"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    code_folding: hide
+    theme: united
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r Load packages and data, message=FALSE, warning=FALSE, include=TRUE}
+if (!require("pacman")) {install.packages("pacman")}
+pacman::p_load(broom,
+               broom.mixed,
+               emmeans,
+               ggtext,
+               janitor,
+               lme4,
+               multcomp,
+               multcompView,
+               patchwork,
+               tidyverse)
+
+# load data ----
+df_articles <- read_csv("per_article.csv") %>% 
+  mutate(article_type = as.factor(str_to_sentence(article_type)))
+df_references <- read_csv("per_reference.csv")
+df_quotes <- read_csv("per_quote.csv")
+```
+
+
+# Overview of articles and journals
+
+## Number of articles
+
+### Total
+```{r message=FALSE, warning=FALSE}
+df_articles %>% 
+  count()
+```
+
+### Manually inspected
+```{r message=FALSE, warning=FALSE}
+df_articles %>% 
+  count(manually_verified,
+        include_analysis)
+```
+
+## Number of journals
+
+### Total
+
+```{r message=FALSE, warning=FALSE}
+df_articles %>% 
+  count(source_title) %>%
+  count()
+```
+
+### Manually inspected
+
+```{r message=FALSE, warning=FALSE}
+df_articles %>% 
+  filter(manually_verified) %>% 
+  count(source_title) %>%
+  count()
+```
+
+## Number of articles retrieved that cited at least one meta-analysis
+
+```{r message=FALSE, warning=FALSE}
+df_articles %>% 
+  filter(n_all_refs_lens > 0) %>% 
+  group_by(detected_meta = n_meta_refs_auto > 0) %>% 
+  summarise(n = n(),
+            prop = n / nrow(df_articles %>% 
+                              filter(n_all_refs_lens > 0)))
+
+```
+
+# True meta-references
+
+## Proportion of true meta-references from all meta-references
+
+```{r message=FALSE, warning=FALSE}
+df_articles %>% 
+  filter(include_analysis) %>%
+  summarise(prop = sum(n_true_meta_refs) / sum(n_meta_refs_manual))
+```
+
+## Model on absolute number of true meta-references
+
+```{r message=FALSE, warning=FALSE}
+glmer_n_true_neg_bin <-
+  df_articles %>% 
+  filter(include_analysis) %>% 
+  glmer.nb(data = .,
+           n_true_meta_refs ~ 
+             article_type - 1 +
+             (1|issn))
+
+summary(glht(glmer_n_true_neg_bin,
+             linfct = mcp(article_type = "Tukey")))
+
+cld(glht(glmer_n_true_neg_bin,
+         linfct = mcp(article_type = "Tukey")),
+    test = adjusted("none"),
+    letters = Letters)
+```
+
+## Model on all references
+
+```{r message=FALSE, warning=FALSE}
+glmer_n_all_neg_bin <-
+  df_articles %>% 
+  filter(include_analysis) %>% 
+  glmer.nb(data = .,
+           n_all_refs_wos ~ 
+             article_type - 1 +
+             (1|issn))
+
+cld(glht(glmer_n_all_neg_bin,
+         linfct = mcp(article_type = "Tukey")),
+    test = adjusted("none"),
+    letters = Letters)
+
+summary(glht(glmer_n_all_neg_bin,
+             linfct = mcp(article_type = "Tukey")))
+
+```
+
+## Model on relative number of true meta-references to all references
+
+```{r message=FALSE, warning=FALSE}
+glmer_rel_true <-
+  df_articles %>% 
+  filter(include_analysis) %>% 
+  glmer(data = .,
+        cbind(n_true_meta_refs,
+              n_all_refs_wos - n_true_meta_refs) ~ 
+          article_type - 1 +
+          (1|issn),
+        family = "binomial")
+
+
+emm <- emmeans(glmer_rel_true, 
+               ~ article_type, 
+               type = "response")
+summary(emm)
+
+cld(glht(glmer_rel_true,
+         linfct = mcp(article_type = "Tukey")),
+    test = adjusted("none"),
+    letters = Letters)
+
+summary(glht(glmer_rel_true,
+             linfct = mcp(article_type = "Tukey")))
+```
+
+## Fig. 2
+
+```{r message=FALSE, warning=FALSE}
+# fig 2a ----
+fig_2a <-
+  df_articles %>% 
+  filter(include_analysis) %>% 
+  ggplot(aes(x = article_type,
+             y = n_true_meta_refs)) +
+  geom_boxplot(outliers = F) +
+  geom_jitter(height = 0,
+              width = 0.2,
+              alpha = 0.3) +
+  geom_point(data = tidy(glmer_n_true_neg_bin) %>%
+               mutate(corrected_est = exp(estimate),
+                      term = str_remove(term,
+                                        "article_type")) %>% 
+               filter(is.na(group)),
+             aes(x = term,
+                 y = corrected_est),
+             col = "red",
+             size = 2) +
+  annotate("text",
+           x = c(1:6),
+           y = -1,
+           label = c("a",
+                     "b",
+                     "a",
+                     "ab",
+                     "a",
+                     "a")) +
+  annotate("text",
+           x = c(1:6),
+           y = 19,
+           label = paste0("N = ",
+                          df_articles %>% 
+                            filter(include_analysis) %>% 
+                            count(article_type) %>% 
+                            pull(n))) +
+  labs(x = "Article type",
+       y = "Number of true meta-references") +
+  scale_y_continuous(limits = c(-1, 21)) +
+  expand_limits(y = 20) +
+  theme_classic() +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_text(margin = margin(r = 0.3, unit = "cm"),
+                                    size = 12),
+        axis.text = element_text(size = 9),
+        plot.tag.position = c(0.14, 0.95))
+
+# fig 2b ----
+fig_2b <-
+  df_articles %>% 
+  filter(include_analysis) %>% 
+  ggplot(aes(x = article_type,
+             y = n_all_refs_wos)) +
+  geom_boxplot(outliers = F) +
+  geom_jitter(height = 0,
+              width = 0.2,
+              alpha = 0.3) +
+  geom_point(data = tidy(glmer_n_all_neg_bin) %>%
+               mutate(corrected_est = exp(estimate),
+                      term = str_remove(term,
+                                        "article_type")) %>% 
+               filter(is.na(group)),
+             aes(x = term,
+                 y = corrected_est),
+             col = "red",
+             size = 2) +
+  annotate("text",
+           x = c(1:6),
+           y = -1,
+           label = c("a",
+                     "bc",
+                     "ac",
+                     "ac",
+                     "b",
+                     "a")) +
+  labs(x = "Article type",
+       y = "Total number of references") +
+  scale_y_continuous(limits = c(-1, 550),
+                     breaks = seq(0, 500, 100)) +
+  theme_classic() +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_text(margin = margin(r = 0.3, unit = "cm"),
+                                    size = 12),
+        axis.text = element_text(size = 9),
+        plot.tag.position = c(0.14, 0.95))
+
+# fig 2c ----
+fig_2c <- 
+  df_articles %>% 
+  filter(include_analysis) %>% 
+  ggplot(aes(x = article_type,
+             y = rel_true_meta_refs)) +
+  geom_boxplot(outliers = F) +
+  geom_jitter(height = 0,
+              width = 0.2,
+              alpha = 0.3) +
+  geom_point(data = as.data.frame(emmeans(glmer_rel_true,
+                                          ~article_type, 
+                                          type = "response")),
+             aes(x = article_type,
+                 y = prob),
+             col = "red",
+             size = 2) +
+  annotate("text",
+           x = c(1:6),
+           y = -0.02,
+           label = c("a",
+                     "b",
+                     rep("abc", 2),
+                     "c",
+                     "abc")) +
+  labs(x = "Article type",
+       y = "Proportion of true meta-references\namong all references") +
+  scale_y_continuous(limits = c(-0.02, 0.2)) +
+  theme_classic() +
+  theme(axis.title.x = element_text(margin = margin(t = 0.3, unit = "cm"),
+                                    size = 12),
+        axis.title.y = element_text(margin = margin(r = 0.3, unit = "cm"),
+                                    size = 12),
+        axis.text = element_text(size = 9),
+        plot.tag.position = c(0.14, 0.95))
+
+(fig_2 <-
+  fig_2a + 
+  fig_2b + 
+  fig_2c + 
+  plot_layout(nrow = 3) +
+  plot_annotation(tag_levels = "A"))
+
+# ggsave("fig_2.jpg",
+#        fig_2,
+#        bg = "white",
+#        dpi = 600,
+#        width = 7,
+#        height = 7*1.41*0.85,
+#        units = "in")
+```
+
+## Fig. 3
+
+```{r message=FALSE, warning=FALSE}
+glmer_jif_prop <-
+  df_articles %>% 
+  filter(include_analysis) %>% 
+  mutate(jif_2022_s = scale(jif_2022)) %>% 
+  glmer(data = .,
+        cbind(n_true_meta_refs,
+              n_all_refs_wos - n_true_meta_refs) ~ 
+          jif_2022_s +
+          (1|issn) +
+          (1|article_type),
+        family = "binomial")
+
+summary(glmer_jif_prop)
+
+emmeans_df <- 
+  tibble(as.data.frame(emmeans(glmer_jif_prop,
+                               ~ jif_2022_s,
+                               at = list(jif_2022_s = seq(min(scale(df_articles %>% 
+                                                                      filter(include_analysis) %>% 
+                                                                      pull(jif_2022))), 
+                                                          max((scale(df_articles %>% 
+                                                                       filter(include_analysis) %>% 
+                                                                       pull(jif_2022)))), 
+                                                          length.out = 100)),
+                               type = "response"))) %>% 
+  mutate(jif_2022 = (jif_2022_s * 
+                       sd(df_articles %>% 
+                            filter(include_analysis) %>% 
+                            pull(jif_2022))) +
+           mean(df_articles %>% 
+                  filter(include_analysis) %>% 
+                  pull(jif_2022)))
+
+## fig. 3 ----
+
+(fig_3 <- 
+  df_articles %>% 
+  filter(include_analysis) %>% 
+  # mutate(jif_2022_s = scale(jif_2022)) %>% 
+  ggplot(aes(x = jif_2022,
+             y = rel_true_meta_refs)) +
+  geom_jitter(height = 0,
+              width = 0.2,
+              alpha = 0.3) +
+  geom_smooth(data = emmeans_df,
+              aes(x = jif_2022,
+                  y = prob),
+              col = "red") +
+  geom_smooth(data = emmeans_df,
+              aes(x = jif_2022,
+                  y = asymp.LCL),
+              linetype = "dashed",
+              col = "red",
+              alpha = 0.3) +
+  geom_smooth(data = emmeans_df,
+              aes(x = jif_2022,
+                  y = asymp.UCL),
+              linetype = "dashed",
+              col = "red",
+              alpha = 0.3) +
+  labs(x = "Clarivate's 2022 journal impact factor",
+       y = "Proportion of true meta references\namong all references",
+       col = "Article type") +
+  theme_classic() +
+  theme(axis.title.x = element_text(margin = margin(t = 0.3, unit = "cm"),
+                                    size = 12),
+        axis.title.y = element_text(margin = margin(r = 0.3, unit = "cm"),
+                                    size = 12),
+        axis.text = element_text(size = 9)))
+
+# ggsave("fig_3.jpg",
+#        fig_3,
+#        bg = "white",
+#        dpi = 600,
+#        width = 7,
+#        height = 7*1.41*0.85*0.5,
+#        units = "in")
+
+
+```
+
+# Meta-references per manuscript section
+
+```{r message=FALSE, warning=FALSE}
+x <-
+  df_references %>% 
+  distinct(article_id,
+           meta_ref_id,
+           meta_ref_section_adj,
+           .keep_all = T) %>%
+  left_join(df_articles %>% 
+              dplyr::select(article_id,
+                            article_type)) %>%
+  filter(is_meta_ref_meta_analysis,
+         !is.na(meta_ref_section_adj),
+         meta_ref_section_adj != "other",
+         article_type != "invalid") %>%
+  count(article_type,
+        meta_ref_section_adj) %>% 
+  pivot_wider(names_from = meta_ref_section_adj,
+              values_from = n) %>% 
+  mutate(methods = replace_na(methods, 0),
+         total = introduction + methods + `results/discussion/conclusion`,
+         prop_intro = introduction / total,
+         prop_methods = methods / total,
+         prop_res = `results/discussion/conclusion` / total)
+
+```
+
+## Model for introduction section
+
+```{r message=FALSE, warning=FALSE}
+glm_introduction <-
+  x %>% 
+  glm(data = .,
+      cbind(introduction,
+            total - introduction) ~ 
+        article_type - 1,
+      family = "binomial")
+
+cld(glht(glm_introduction,
+         linfct = mcp(article_type = "Tukey")),
+    test = adjusted("none"),
+    letters = Letters)
+
+summary(glht(glm_introduction,
+             linfct = mcp(article_type = "Tukey")))
+```
+
+## Model for methods section
+
+```{r message=FALSE, warning=FALSE}
+glm_methods <-
+  x %>% 
+  glm(data = .,
+      cbind(methods,
+            total - methods) ~ 
+        article_type - 1,
+      family = "binomial")
+
+cld(glht(glm_methods,
+         linfct = mcp(article_type = "Tukey")),
+    test = adjusted("none"),
+    letters = Letters)
+
+summary(glht(glm_methods,
+             linfct = mcp(article_type = "Tukey")))
+```
+
+## Model for discusssion section
+
+```{r message=FALSE, warning=FALSE}
+glm_discussion <-
+  x %>% 
+  glm(data = .,
+      cbind(`results/discussion/conclusion`,
+            total - `results/discussion/conclusion`) ~ 
+        article_type - 1,
+      family = "binomial")
+
+cld(glht(glm_discussion,
+         linfct = mcp(article_type = "Tukey")),
+    test = adjusted("none"),
+    letters = Letters)
+
+summary(glht(glm_discussion,
+             linfct = mcp(article_type = "Tukey")))
+
+```
+
+## Fig. 4
+
+```{r message=FALSE, warning=FALSE}
+### fig 4a ----
+fig_4a <- 
+  df_references %>% 
+  distinct(article_id,
+           meta_ref_id,
+           meta_ref_section_adj,
+           .keep_all = T) %>%
+  left_join(df_articles %>% 
+              dplyr::select(article_id,
+                            article_type)) %>%
+  filter(is_meta_ref_meta_analysis,
+         !is.na(meta_ref_section_adj),
+         meta_ref_section_adj != "other",
+         article_type != "invalid") %>%
+  count(article_type,
+        meta_ref_section_adj) %>% 
+  group_by(article_type) %>%
+  mutate(prop = n / sum(n)) %>% 
+  ggplot(aes(x = article_type,
+             y = prop,
+             group = meta_ref_section_adj,
+             fill = meta_ref_section_adj,
+             label = n)) +
+  geom_col() +
+  geom_label(hjust = 0.5,
+             position = position_stack(vjust = 0.5),
+             col = "black",
+             fill = "white",
+             label.r = unit(0.4, "lines"),
+             label.padding = unit(0.15, "lines"),
+             size = 3.5) +
+  scale_fill_manual(values = c("grey90", "grey60", "grey30")) +
+  scale_y_continuous(breaks = seq(0 , 1, by = 0.2),
+                     limits = c(0, 1)) +
+  labs(pattern = "Section",
+       pattern_angle = "Section",
+       pattern_density = "Section",
+       pattern_spacing = "Section",
+       fill = "Section",
+       x = "Article type",
+       y = "Proportion of articles") +
+  theme_classic() +
+  theme(axis.title.x = element_text(margin = margin(t = 0.3, unit = "cm"),
+                                    size = 12),
+        axis.title.y = element_text(margin = margin(r = 0.3, unit = "cm"),
+                                    size = 12),
+        axis.text = element_text(size = 9),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 9),
+        legend.position = "top",
+        plot.tag.position = c(0.13, 0.93))
+
+
+### fig 4b ----
+res_quotes <- 
+  df_quotes %>%
+  count(reports_any_result,
+        reports_quantitative_result,
+        reports_limitation) %>% 
+  mutate(prop = n/nrow(df_quotes))
+
+fig_4b <-
+  res_quotes %>%
+  filter(reports_any_result) %>% 
+  summarise(n = sum(n),
+            value = sum(prop)) %>% 
+  bind_rows(res_quotes %>%
+              filter(reports_quantitative_result) %>% 
+              summarise(n = sum(n),
+                        value = sum(prop))) %>% 
+  bind_rows(res_quotes %>%
+              filter(reports_limitation) %>% 
+              summarise(n = sum(n),
+                        value = sum(prop))) %>% 
+  mutate(x = factor(c("Any result",
+                      "Quantitative result",
+                      "Limitation"),
+                    levels = c("Any result",
+                               "Quantitative result",
+                               "Limitation"))) %>% 
+  ggplot(aes(x = x,
+             y = value,
+             label = n)) +
+  geom_col(fill = "black") +
+  geom_label(hjust = 0.5,
+             position = position_stack(vjust = 0.5),
+             col = "black",
+             fill = "white",
+             label.r = unit(0.4, "lines"),
+             label.padding = unit(0.15, "lines"),
+             size = 3.5) +
+  scale_y_continuous(breaks = seq(0 , 1, by = 0.2),
+                     limits = c(0, 1)) +
+  labs(x = "Content type",
+       y = "Proportion of quotations") +
+  theme_classic() +
+  theme(axis.title.x = element_text(margin = margin(t = 0.3, unit = "cm"),
+                                    size = 12),
+        axis.title.y = element_text(margin = margin(r = 0.3, unit = "cm"),
+                                    size = 12),
+        axis.text = element_text(size = 9),
+        plot.tag.position = c(0.13, 0.95))
+
+### joined figures ----
+(fig_4 <-
+  fig_4a +
+  fig_4b +
+  plot_layout(nrow = 2) +
+  plot_annotation(tag_levels = "A"))
+
+# ggsave("fig_4.jpg",
+#        fig_4,
+#        bg = "white",
+#        dpi = 600,
+#        width = 7,
+#        height = 7*1.41*0.6,
+#        units = "in")
+
+```
+
+# Quote content
+
+## Proportion of quotes on meta-analyses' results
+
+```{r message=FALSE, warning=FALSE}
+df_quotes %>% 
+  count(reports_any_result,
+        reports_quantitative_result) %>% 
+  mutate(prop = n/nrow(df_quotes))
+
+```
+
+## Proportion of quotes on meta-analyses' limitations
+
+```{r message=FALSE, warning=FALSE}
+
+## proportion of quotes about limitation ----
+df_quotes %>% 
+  count(reports_limitation) %>% 
+  mutate(prop = n/nrow(df_quotes))
+```
+
+# Efficiency of detecting meta-references
+
+```{r message=FALSE, warning=FALSE}
+df_articles %>%
+  filter(manually_verified) %>%
+  mutate(auto_meta = str_detect(title,
+                                "meta-an|metaan|meta-reg|metareg")) %>% 
+  count(auto_meta,
+        article_type)
+
+tp <- 22
+fn <- 25
+fp <- 1
+tn <- 638
+
+```
+
+## Precision 
+```{r message=FALSE, warning=FALSE}
+
+#### precision ----
+tp/(tp+fp)
+
+```
+
+## Sensitivity 
+```{r message=FALSE, warning=FALSE}
+
+#### sensitivity ----
+tp/(tp+fn)
+
+```
+
+## Accuracy
+```{r message=FALSE, warning=FALSE}
+
+#### accuracy ----
+(tp+tn)/(tp+fp+tn+fn)
+```
+
