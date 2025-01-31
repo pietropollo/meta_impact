@@ -173,9 +173,9 @@ fig_2a <-
   ggplot(aes(x = article_type,
              y = n_true_meta_refs)) +
   geom_boxplot(outliers = F) +
-  geom_jitter(height = 0,
-              width = 0.2,
-              alpha = 0.3) +
+  # geom_jitter(height = 0,
+  #             width = 0.2,
+  #             alpha = 0.3) +
   geom_point(data = tidy(glmer_n_true_neg_bin) %>%
                mutate(corrected_est = exp(estimate),
                       term = str_remove(term,
@@ -187,7 +187,7 @@ fig_2a <-
              size = 2) +
   annotate("text",
            x = c(1:6),
-           y = -1,
+           y = -0.05,
            label = c("a",
                      "b",
                      "a",
@@ -196,7 +196,7 @@ fig_2a <-
                      "a")) +
   annotate("text",
            x = c(1:6),
-           y = 19,
+           y = 12,
            label = paste0("N = ",
                           df_articles %>% 
                             filter(include_analysis) %>% 
@@ -204,7 +204,7 @@ fig_2a <-
                             pull(n))) +
   labs(x = "Article type",
        y = "Number of true meta-references") +
-  scale_y_continuous(limits = c(-1, 21)) +
+  scale_y_continuous(limits = c(-0.05, 14)) +
   expand_limits(y = 20) +
   theme_classic() +
   theme(axis.title.x = element_blank(),
@@ -220,9 +220,9 @@ fig_2b <-
   ggplot(aes(x = article_type,
              y = n_all_refs_wos)) +
   geom_boxplot(outliers = F) +
-  geom_jitter(height = 0,
-              width = 0.2,
-              alpha = 0.3) +
+  # geom_jitter(height = 0,
+  #             width = 0.2,
+  #             alpha = 0.3) +
   geom_point(data = tidy(glmer_n_all_neg_bin) %>%
                mutate(corrected_est = exp(estimate),
                       term = str_remove(term,
@@ -243,8 +243,8 @@ fig_2b <-
                      "a")) +
   labs(x = "Article type",
        y = "Total number of references") +
-  scale_y_continuous(limits = c(-1, 550),
-                     breaks = seq(0, 500, 100)) +
+  scale_y_continuous(limits = c(-1, 280),
+                     breaks = seq(0, 200, 100)) +
   theme_classic() +
   theme(axis.title.x = element_blank(),
         axis.title.y = element_text(margin = margin(r = 0.3, unit = "cm"),
@@ -259,11 +259,11 @@ fig_2c <-
   ggplot(aes(x = article_type,
              y = rel_true_meta_refs)) +
   geom_boxplot(outliers = F) +
-  geom_jitter(height = 0,
-              width = 0.2,
-              alpha = 0.3) +
+  # geom_jitter(height = 0,
+  #             width = 0.2,
+  #             alpha = 0.3) +
   geom_point(data = as.data.frame(emmeans(glmer_rel_true,
-                                          ~article_type, 
+                                          ~ article_type, 
                                           type = "response")),
              aes(x = article_type,
                  y = prob),
@@ -271,7 +271,7 @@ fig_2c <-
              size = 2) +
   annotate("text",
            x = c(1:6),
-           y = -0.02,
+           y = -0.01,
            label = c("a",
                      "b",
                      rep("abc", 2),
@@ -279,7 +279,8 @@ fig_2c <-
                      "abc")) +
   labs(x = "Article type",
        y = "Proportion of true meta-references\namong all references") +
-  scale_y_continuous(limits = c(-0.02, 0.2)) +
+  scale_y_continuous(limits = c(-0.01, 0.09),
+                     breaks = seq(0, 0.1, by = 0.05)) +
   theme_classic() +
   theme(axis.title.x = element_text(margin = margin(t = 0.3, unit = "cm"),
                                     size = 12),
@@ -289,11 +290,11 @@ fig_2c <-
         plot.tag.position = c(0.14, 0.95))
 
 (fig_2 <-
-  fig_2a + 
-  fig_2b + 
-  fig_2c + 
-  plot_layout(nrow = 3) +
-  plot_annotation(tag_levels = "A"))
+    fig_2a + 
+    fig_2b + 
+    fig_2c + 
+    plot_layout(nrow = 3) +
+    plot_annotation(tag_levels = "A"))
 
 # ggsave("fig_2.jpg",
 #        fig_2,
@@ -343,39 +344,39 @@ emmeans_df <-
 ## fig. 3 ----
 
 (fig_3 <- 
-  df_articles %>% 
-  filter(include_analysis) %>% 
-  # mutate(jif_2022_s = scale(jif_2022)) %>% 
-  ggplot(aes(x = jif_2022,
-             y = rel_true_meta_refs)) +
-  geom_jitter(height = 0,
-              width = 0.2,
-              alpha = 0.3) +
-  geom_smooth(data = emmeans_df,
-              aes(x = jif_2022,
-                  y = prob),
-              col = "red") +
-  geom_smooth(data = emmeans_df,
-              aes(x = jif_2022,
-                  y = asymp.LCL),
-              linetype = "dashed",
-              col = "red",
-              alpha = 0.3) +
-  geom_smooth(data = emmeans_df,
-              aes(x = jif_2022,
-                  y = asymp.UCL),
-              linetype = "dashed",
-              col = "red",
-              alpha = 0.3) +
-  labs(x = "Clarivate's 2022 journal impact factor",
-       y = "Proportion of true meta references\namong all references",
-       col = "Article type") +
-  theme_classic() +
-  theme(axis.title.x = element_text(margin = margin(t = 0.3, unit = "cm"),
-                                    size = 12),
-        axis.title.y = element_text(margin = margin(r = 0.3, unit = "cm"),
-                                    size = 12),
-        axis.text = element_text(size = 9)))
+   df_articles %>% 
+   filter(include_analysis) %>% 
+   # mutate(jif_2022_s = scale(jif_2022)) %>% 
+   ggplot(aes(x = jif_2022,
+              y = rel_true_meta_refs)) +
+   geom_jitter(height = 0,
+               width = 0.2,
+               alpha = 0.3) +
+   geom_smooth(data = emmeans_df,
+               aes(x = jif_2022,
+                   y = prob),
+               col = "red") +
+   geom_smooth(data = emmeans_df,
+               aes(x = jif_2022,
+                   y = asymp.LCL),
+               linetype = "dashed",
+               col = "red",
+               alpha = 0.3) +
+   geom_smooth(data = emmeans_df,
+               aes(x = jif_2022,
+                   y = asymp.UCL),
+               linetype = "dashed",
+               col = "red",
+               alpha = 0.3) +
+   labs(x = "Clarivate's 2022 journal impact factor",
+        y = "Proportion of true meta references\namong all references",
+        col = "Article type") +
+   theme_classic() +
+   theme(axis.title.x = element_text(margin = margin(t = 0.3, unit = "cm"),
+                                     size = 12),
+         axis.title.y = element_text(margin = margin(r = 0.3, unit = "cm"),
+                                     size = 12),
+         axis.text = element_text(size = 9)))
 
 # ggsave("fig_3.jpg",
 #        fig_3,
@@ -585,10 +586,10 @@ fig_4b <-
 
 ### joined figures ----
 (fig_4 <-
-  fig_4a +
-  fig_4b +
-  plot_layout(nrow = 2) +
-  plot_annotation(tag_levels = "A"))
+   fig_4a +
+   fig_4b +
+   plot_layout(nrow = 2) +
+   plot_annotation(tag_levels = "A"))
 
 # ggsave("fig_4.jpg",
 #        fig_4,
