@@ -1,5 +1,5 @@
 ---
-title: "Systematic map of meta-analyses related to sexual selection"
+title: "Harnessing meta-analyses’ insights in ecology and evolution research"
 author: "Pietro Pollo"
 date: "`r Sys.Date()`"
 output: 
