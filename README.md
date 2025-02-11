@@ -1,4 +1,4 @@
-# Meta-impact: harnessing meta-analyses’ insights in ecology and evolution research
+# Harnessing meta-analyses’ insights in ecology and evolution research
 
 html file contains the analyses necessary to reproduce this research. Alternatively, one can check the rmd file for the code. Data is distributed in 3 csv files:
 
