@@ -1,5 +1,5 @@
 ---
-title: "Systematic map of meta-analyses related to sexual selection"
+title: "Harnessing meta-analyses’ insights in ecology and evolution research"
 author: "Pietro Pollo"
 date: "`r Sys.Date()`"
 output: 
@@ -203,7 +203,7 @@ fig_2a <-
              size = 2) +
   annotate("text",
            x = c(1:6),
-           y = -1,
+           y = -0.05,
            label = c("a",
                      "b",
                      "a",
@@ -212,7 +212,11 @@ fig_2a <-
                      "a")) +
   annotate("text",
            x = c(1:6),
+<<<<<<< HEAD
            y = 13,
+=======
+           y = 12,
+>>>>>>> 0d1c49f4ab19d48ac0e04d3e1ddf2d854c1b9485
            label = paste0("N = ",
                           df_articles %>% 
                             filter(include_analysis) %>% 
@@ -220,11 +224,16 @@ fig_2a <-
                             pull(n))) +
   labs(x = "Article type",
        y = "Number of true meta-references") +
+<<<<<<< HEAD
   scale_y_continuous(limits = c(-1, 
                                 14),
                      breaks = c(0, 
                                 5, 
                                 10)) +
+=======
+  scale_y_continuous(limits = c(-0.05, 14)) +
+  expand_limits(y = 20) +
+>>>>>>> 0d1c49f4ab19d48ac0e04d3e1ddf2d854c1b9485
   theme_classic() +
   theme(axis.title.x = element_blank(),
         axis.title.y = element_text(margin = margin(r = 0.3, 
@@ -264,11 +273,16 @@ fig_2b <-
                      "a")) +
   labs(x = "Article type",
        y = "Total number of references") +
+<<<<<<< HEAD
   scale_y_continuous(limits = c(-1, 
                                 270),
                      breaks = seq(0, 
                                   500, 
                                   100)) +
+=======
+  scale_y_continuous(limits = c(-1, 280),
+                     breaks = seq(0, 200, 100)) +
+>>>>>>> 0d1c49f4ab19d48ac0e04d3e1ddf2d854c1b9485
   theme_classic() +
   theme(axis.title.x = element_blank(),
         axis.title.y = element_text(margin = margin(r = 0.3, unit = "cm"),
@@ -295,7 +309,7 @@ fig_2c <-
              size = 2) +
   annotate("text",
            x = c(1:6),
-           y = -0.02,
+           y = -0.01,
            label = c("a",
                      "b",
                      rep("abc", 2),
@@ -303,10 +317,15 @@ fig_2c <-
                      "abc")) +
   labs(x = "Article type",
        y = "Proportion of true meta-references\namong all references") +
+<<<<<<< HEAD
   scale_y_continuous(limits = c(-0.02, 
                                 0.09),
                      breaks = c(0, 
                                 0.05)) +
+=======
+  scale_y_continuous(limits = c(-0.01, 0.09),
+                     breaks = seq(0, 0.1, by = 0.05)) +
+>>>>>>> 0d1c49f4ab19d48ac0e04d3e1ddf2d854c1b9485
   theme_classic() +
   theme(axis.title.x = element_text(margin = margin(t = 0.3, unit = "cm"),
                                     size = 12),
@@ -370,7 +389,11 @@ emmeans_df <-
 
 ## fig. s2 ----
 
+<<<<<<< HEAD
 (fig_s2 <- 
+=======
+(fig_3 <- 
+>>>>>>> 0d1c49f4ab19d48ac0e04d3e1ddf2d854c1b9485
    df_articles %>% 
    filter(include_analysis) %>% 
    # mutate(jif_2022_s = scale(jif_2022)) %>% 
@@ -624,9 +647,15 @@ fig_3b <-
         plot.tag.position = c(0.13, 0.95))
 
 ### joined figures ----
+<<<<<<< HEAD
 (fig_3 <-
    fig_3a +
    fig_3b +
+=======
+(fig_4 <-
+   fig_4a +
+   fig_4b +
+>>>>>>> 0d1c49f4ab19d48ac0e04d3e1ddf2d854c1b9485
    plot_layout(nrow = 2) +
    plot_annotation(tag_levels = "A"))
 
